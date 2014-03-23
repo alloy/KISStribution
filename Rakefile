@@ -22,9 +22,7 @@ end
 
 desc 'Build and run'
 task :run => :link do
-  Dir.chdir 'build' do
-    sh "./#{ENV['BINNAME']}"
-  end
+  sh "./build/#{ENV['BINNAME']}"
 end
 
 ENV['BINNAME'] ||= 'test'

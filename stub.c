@@ -1,5 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include <mach-o/ldsyms.h>
 #include <mach-o/getsect.h>
@@ -19,8 +22,21 @@ main() {
   } else {
     /*printf("SIZE: %lu. DATA: %s\n", size, (unsigned char *)data);*/
 
+    /*char *root = mkdtemp("/tmp/KISStribution.XXXXX");*/
+    char *root = "/tmp/KISStribution.XXXXX";
+    printf("CREATE AND CHANGE TO ROOT: %s\n", root);
+    if (mkdir(root, 0755) != 0 && errno != EEXIST) {
+      fprintf(stderr, "Unable to create root at `%s' (errno=%d)\n", root, errno);
+      return 1;
+    }
+
+    if (chdir(root) != 0) {
+      fprintf(stderr, "Unable to change working dir to root at `%s' (errno=%d)\n", root, errno);
+      return 1;
+    }
+
     void untar(const char *input);
     untar((const char *)data);
   }
-  exit(0);
+  return 0;
 }
