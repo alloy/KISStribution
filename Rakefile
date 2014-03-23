@@ -23,7 +23,7 @@ task :link => :stub do
 
   mkdir_p PRODUCTS_DIR
   object = File.join(PRODUCTS_DIR, "#{name}.o")
-  sh "ld -r #{EXECUTABLE_OBJECT} -sectcreate __DATA __tar_data '#{data}' -o '#{object}'"
+  sh "ld -r #{EXECUTABLE_OBJECT} -sectcreate __DATA __#{File.extname(data)[1..-1]}_data '#{data}' -o '#{object}'"
   sh "clang #{object} -o #{File.join(PRODUCTS_DIR, name)}"
 end
 
@@ -38,6 +38,7 @@ task :run => :link do
 end
 
 ENV['BINNAME'] ||= 'test'
-ENV['DATAFILE'] ||= 'test.tar'
+#ENV['DATAFILE'] ||= 'fixtures/test.tar'
+ENV['DATAFILE'] ||= 'fixtures/test.tar.lz4'
 
 task :default => :run
