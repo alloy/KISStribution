@@ -3,6 +3,7 @@ task :stub do
   mkdir_p 'build'
   sh "clang -c stub.c -o build/stub.o"
   sh "clang -c untar.c -o build/untar.o"
+  sh "clang -c lz4/lz4.c -o build/lz4.o"
 end
 
 desc 'Link data file into final binary'
@@ -12,7 +13,7 @@ task :link => :stub do
   object = "build/#{name}.o"
   sh "ld -r build/stub.o -sectcreate __DATA __tar_data '#{data}' -o '#{object}'"
   #sh "clang '#{object}' -flat_namespace -undefined suppress -o 'build/#{name}'"
-  sh "clang '#{object}' 'build/untar.o' -o 'build/#{name}'"
+  sh "clang '#{object}' 'build/untar.o' 'build/lz4.o' -o 'build/#{name}'"
 end
 
 desc 'Clean'
