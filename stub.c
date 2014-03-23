@@ -14,6 +14,13 @@ int
 main() {
   unsigned long size = 0;
   const uint8_t *data = archive_data(&size);
-  printf("SIZE: %lu. DATA: %s\n", size, (unsigned char *)data);
+  if (size == 0) {
+    printf("[!] No data found!\n");
+  } else {
+    /*printf("SIZE: %lu. DATA: %s\n", size, (unsigned char *)data);*/
+
+    void untar(const char *input);
+    untar((const char *)data);
+  }
   exit(0);
 }

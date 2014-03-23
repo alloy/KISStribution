@@ -128,23 +128,27 @@ verify_checksum(const char *p)
 }
 
 /* Extract a tar archive. */
-static void
-untar(FILE *a, const char *path)
+void
+untar(const char *input)
 {
-	char buff[512];
+	/*char buff[512];*/
+  char *buff = (char *)input;
 	FILE *f = NULL;
 	size_t bytes_read;
 	int filesize;
 
-	printf("Extracting from %s\n", path);
+  const char *path = "/foo/bar";
+
+	printf("Extracting\n");
 	for (;;) {
-		bytes_read = fread(buff, 1, 512, a);
-		if (bytes_read < 512) {
-			fprintf(stderr,
-			    "Short read on %s: expected 512, got %d\n",
-			    path, (int)bytes_read);
-			return;
-		}
+    bytes_read = 512;
+		/*bytes_read = fread(buff, 1, 512, a);*/
+		/*if (bytes_read < 512) {*/
+			/*fprintf(stderr,*/
+					/*"Short read on %s: expected 512, got %d\n",*/
+					/*path, (int)bytes_read);*/
+			/*return;*/
+		/*}*/
 		if (is_end_of_archive(buff)) {
 			printf("End of %s\n", path);
 			return;
@@ -181,13 +185,15 @@ untar(FILE *a, const char *path)
 			break;
 		}
 		while (filesize > 0) {
-			bytes_read = fread(buff, 1, 512, a);
-			if (bytes_read < 512) {
-				fprintf(stderr,
-				    "Short read on %s: Expected 512, got %d\n",
-				    path, (int)bytes_read);
-				return;
-			}
+      buff = buff + 512;
+      bytes_read = 512;
+			/*bytes_read = fread(buff, 1, 512, a);*/
+			/*if (bytes_read < 512) {*/
+				/*fprintf(stderr,*/
+						/*"Short read on %s: Expected 512, got %d\n",*/
+						/*path, (int)bytes_read);*/
+				/*return;*/
+			/*}*/
 			if (filesize < 512)
 				bytes_read = filesize;
 			if (f != NULL) {
@@ -205,23 +211,24 @@ untar(FILE *a, const char *path)
 			fclose(f);
 			f = NULL;
 		}
+    buff = buff + 512;
 	}
 }
 
-int
-main(int argc, char **argv)
-{
-	FILE *a;
+/*int*/
+/*main(int argc, char **argv)*/
+/*{*/
+	/*FILE *a;*/
 
-	++argv; /* Skip program name */
-	for ( ;*argv != NULL; ++argv) {
-		a = fopen(*argv, "r");
-		if (a == NULL)
-			fprintf(stderr, "Unable to open %s\n", *argv);
-		else {
-			untar(a, *argv);
-			fclose(a);
-		}
-	}
-	return (0);
-}
+	/*++argv; [> Skip program name <]*/
+	/*for ( ;*argv != NULL; ++argv) {*/
+		/*a = fopen(*argv, "r");*/
+		/*if (a == NULL)*/
+			/*fprintf(stderr, "Unable to open %s\n", *argv);*/
+		/*else {*/
+			/*untar(a, *argv);*/
+			/*fclose(a);*/
+		/*}*/
+	/*}*/
+	/*return (0);*/
+/*}*/
