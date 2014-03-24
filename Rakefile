@@ -11,7 +11,8 @@ task :stub do
     File.join(OBJECTS_BUILD_DIR, "#{File.basename(source, '.c')}.o")
   end
   sources.zip(objects).each do |source, object|
-    sh "clang -g -O0 -c #{source} -o #{object}"
+    # TODO -Weverything
+    sh "clang -g -O0 -Wall -c #{source} -o #{object}"
   end
   sh "ld -r #{objects.join(' ')} -o #{EXECUTABLE_OBJECT}"
 end
