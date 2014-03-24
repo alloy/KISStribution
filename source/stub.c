@@ -1,8 +1,10 @@
+#include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <errno.h>
 
 #include <mach-o/ldsyms.h>
 #include <mach-o/getsect.h>
@@ -51,6 +53,27 @@ untar_data(const char *data)
   return 0;
 }
 
+// Needs to be freed.
+//
+// TODO this is not shell-split safe, need to come up with a good way to
+// encode and preserve white space where necessary.
+static char **
+shellsplit(const char *input)
+{
+  char **components = NULL;
+  char *p = strtok((char *)input, " ");
+  int components_count = 0;
+  while (p) {
+    components = realloc(components, sizeof(char *) * (++components_count));
+    assert(components != NULL && "Unable to allocate memory.");
+    components[components_count-1] = p;
+    p = strtok(NULL, " ");
+  }
+  components = realloc(components, sizeof(char *) * (++components_count));
+  components[components_count-1] = NULL;
+  return components;
+}
+
 int
 main() {
   unsigned long size = 0;
@@ -78,8 +101,18 @@ main() {
   // TODO actually use exec_cmd
   printf("Exec: %s\n", exec_cmd);
 
+  char **components = shellsplit((const char *)exec_cmd);
+  /*free(exec_cmd);*/
+  for (int i = 0; i < 99; ++i) {
+    printf("components[%d] = %s\n", i, components[i]);
+    if (components[i] == NULL) {
+      break;
+    }
+  }
   // TODO fork
-  execl("/bin/ls", "ls", "-l", "/tmp/KISStribution.XXXXX", (char *)0);
+  /*execl("/bin/ls", "ls", "-l", "/tmp/KISStribution.XXXXX", (char *)0);*/
+  execv(components[0], &components[0]);
+  free(components);
 
   return 0;
 }
