@@ -147,7 +147,7 @@ static const int one = 1;
 //**************************************
 // Local Parameters
 //**************************************
-static int displayLevel = 0;   // 0 : no display  // 1: errors  // 2 : + result + interaction + warnings ;  // 3 : + progression;  // 4 : + information
+static int displayLevel = 4;   // 0 : no display  // 1: errors  // 2 : + result + interaction + warnings ;  // 3 : + progression;  // 4 : + information
 static int overwrite = 1;
 static int blockSizeId = LZ4S_BLOCKSIZEID_DEFAULT;
 static int blockChecksum = 0;
@@ -160,8 +160,9 @@ static const int maxBlockSizeID = 7;
 //**************************************
 // Exceptions
 //**************************************
-#define DEBUG 0
+#define DEBUG 1
 #define DEBUGOUTPUT(...) if (DEBUG) DISPLAY(__VA_ARGS__);
+// KISStribution TODO remove exit() call
 #define EXM_THROW(error, ...)                                             \
 {                                                                         \
     DEBUGOUTPUT("Error defined at %s, line %i : \n", __FILE__, __LINE__); \
@@ -711,8 +712,9 @@ static unsigned long long decodeLegacyStream(FILE* finput, FILE* foutput)
     return filesize;
 }
 
-
-static unsigned long long decodeLZ4S(FILE* finput, FILE* foutput)
+// KISStribution change
+#include "../string_io.h"
+unsigned long long decodeLZ4S(char **finput, char **foutput)
 {
     unsigned long long filesize = 0;
     char* in_buff;
@@ -728,7 +730,8 @@ static unsigned long long decodeLZ4S(FILE* finput, FILE* foutput)
     unsigned int prefix64k = 0;
 
     // Decode stream descriptor
-    nbReadBytes = fread(descriptor, 1, 3, finput);
+    // KISStribution change
+    nbReadBytes = sread(descriptor, 1, 3, finput);
     if (nbReadBytes != 3) EXM_THROW(61, "Unreadable header");
     {
         int version       = (descriptor[0] >> 6) & _2BITS;
@@ -785,7 +788,7 @@ static unsigned long long decodeLZ4S(FILE* finput, FILE* foutput)
         unsigned int blockSize, uncompressedFlag;
 
         // Block Size
-        nbReadBytes = fread(&blockSize, 1, 4, finput);
+        nbReadBytes = sread(&blockSize, 1, 4, finput);
         if( nbReadBytes != 4 ) EXM_THROW(71, "Read error : cannot read next block size");
         if (blockSize == LZ4S_EOS) break;          // End of Stream Mark : stream is completed
         blockSize = LITTLE_ENDIAN_32(blockSize);   // Convert to little endian
@@ -794,7 +797,7 @@ static unsigned long long decodeLZ4S(FILE* finput, FILE* foutput)
         if (blockSize > maxBlockSize) EXM_THROW(72, "Error : invalid block size");
 
         // Read Block
-        nbReadBytes = fread(in_buff, 1, blockSize, finput);
+        nbReadBytes = sread(in_buff, 1, blockSize, finput);
         if( nbReadBytes != blockSize ) EXM_THROW(73, "Read error : cannot read data block" );
 
         // Check Block
@@ -802,7 +805,7 @@ static unsigned long long decodeLZ4S(FILE* finput, FILE* foutput)
         {
             unsigned int checksum = XXH32(in_buff, blockSize, LZ4S_CHECKSUM_SEED);
             unsigned int readChecksum;
-            sizeCheck = fread(&readChecksum, 1, 4, finput);
+            sizeCheck = sread(&readChecksum, 1, 4, finput);
             if( sizeCheck != 4 ) EXM_THROW(74, "Read error : cannot read next block size");
             readChecksum = LITTLE_ENDIAN_32(readChecksum);   // Convert to little endian
             if (checksum != readChecksum) EXM_THROW(75, "Error : invalid block checksum detected");
@@ -811,7 +814,7 @@ static unsigned long long decodeLZ4S(FILE* finput, FILE* foutput)
         if (uncompressedFlag)
         {
             // Write uncompressed Block
-            sizeCheck = fwrite(in_buff, 1, blockSize, foutput);
+            sizeCheck = swrite(in_buff, 1, blockSize, foutput);
             if (sizeCheck != (size_t)blockSize) EXM_THROW(76, "Write error : cannot write data block");
             filesize += blockSize;
             if (streamChecksumFlag) XXH32_update(streamChecksumState, in_buff, blockSize);
@@ -839,7 +842,7 @@ static unsigned long long decodeLZ4S(FILE* finput, FILE* foutput)
             if (streamChecksumFlag) XXH32_update(streamChecksumState, out_start, decodedBytes);
 
             // Write Block
-            sizeCheck = fwrite(out_start, 1, decodedBytes, foutput);
+            sizeCheck = swrite(out_start, 1, decodedBytes, foutput);
             if (sizeCheck != (size_t)decodedBytes) EXM_THROW(78, "Write error : cannot write decoded block\n");
         }
 
@@ -859,7 +862,7 @@ static unsigned long long decodeLZ4S(FILE* finput, FILE* foutput)
     {
         unsigned int checksum = XXH32_digest(streamChecksumState);
         unsigned int readChecksum;
-        sizeCheck = fread(&readChecksum, 1, 4, finput);
+        sizeCheck = sread(&readChecksum, 1, 4, finput);
         if (sizeCheck != 4) EXM_THROW(74, "Read error : cannot read stream checksum");
         readChecksum = LITTLE_ENDIAN_32(readChecksum);   // Convert to little endian
         if (checksum != readChecksum) EXM_THROW(75, "Error : invalid stream checksum detected");
@@ -873,14 +876,17 @@ static unsigned long long decodeLZ4S(FILE* finput, FILE* foutput)
 }
 
 
-static unsigned long long selectDecoder( FILE* finput,  FILE* foutput)
+// KISStribution change
+#include <assert.h>
+/*static unsigned long long selectDecoder( FILE* finput,  FILE* foutput)*/
+static unsigned long long selectDecoder(char **finput,  char **foutput)
 {
     unsigned int magicNumber, size;
     int errorNb;
     size_t nbReadBytes;
 
     // Check Archive Header
-    nbReadBytes = fread(&magicNumber, 1, MAGICNUMBER_SIZE, finput);
+    nbReadBytes = sread(&magicNumber, 1, MAGICNUMBER_SIZE, finput);
     if (nbReadBytes==0) return 0;                  // EOF
     if (nbReadBytes != MAGICNUMBER_SIZE) EXM_THROW(41, "Unrecognized header : Magic Number unreadable");
     magicNumber = LITTLE_ENDIAN_32(magicNumber);   // Convert to Little Endian format
@@ -891,36 +897,40 @@ static unsigned long long selectDecoder( FILE* finput,  FILE* foutput)
     case LZ4S_MAGICNUMBER:
         return DEFAULT_DECOMPRESSOR(finput, foutput);
     case LEGACY_MAGICNUMBER:
-        DISPLAYLEVEL(4, "Detected : Legacy format \n");
-        return decodeLegacyStream(finput, foutput);
+        assert(0 && "Legacy streams are not supported.");
+        /*DISPLAYLEVEL(4, "Detected : Legacy format \n");*/
+        /*return decodeLegacyStream(finput, foutput);*/
     case LZ4S_SKIPPABLE0:
         DISPLAYLEVEL(4, "Skipping detected skippable area \n");
-        nbReadBytes = fread(&size, 1, 4, finput);
+        nbReadBytes = sread(&size, 1, 4, finput);
         if (nbReadBytes != 4) EXM_THROW(42, "Stream error : skippable size unreadable");
         size = LITTLE_ENDIAN_32(size);     // Convert to Little Endian format
-        errorNb = fseek(finput, size, SEEK_CUR);
+        errorNb = sseek(finput, size, SEEK_CUR);
         if (errorNb != 0) EXM_THROW(43, "Stream error : cannot skip skippable area");
         return selectDecoder(finput, foutput);
     EXTENDED_FORMAT;
     default:
-        if (ftell(finput) == MAGICNUMBER_SIZE) EXM_THROW(44,"Unrecognized header : file cannot be decoded");   // Wrong magic number at the beginning of 1st stream
+        if (stell(finput) == MAGICNUMBER_SIZE) EXM_THROW(44,"Unrecognized header : file cannot be decoded");   // Wrong magic number at the beginning of 1st stream
         DISPLAYLEVEL(2, "Stream followed by unrecognized data\n");
         return 0;
     }
 }
 
 
-int LZ4IO_decompressFilename(char* input_filename, char* output_filename)
+/*int LZ4IO_decompressFilename(char* input_filename, char* output_filename);*/
+int LZ4IO_decompress(const char *input, char **foutput)
 {
     unsigned long long filesize = 0, decodedSize=0;
-    FILE* finput;
-    FILE* foutput;
+    // KISStribution change
+    char **finput = (char **)&input;
+    /*FILE* finput;*/
+    /*FILE* foutput;*/
     clock_t start, end;
-
 
     // Init
     start = clock();
-    get_fileHandle(input_filename, output_filename, &finput, &foutput);
+    // KISStribution change
+    /*get_fileHandle(input_filename, output_filename, &finput, &foutput);*/
 
     // Loop over multiple streams
     do
@@ -939,8 +949,9 @@ int LZ4IO_decompressFilename(char* input_filename, char* output_filename)
     }
 
     // Close
-    fclose(finput);
-    fclose(foutput);
+    // KISStribution change
+    /*fclose(finput);*/
+    /*fclose(foutput);*/
 
     // Error status = OK
     return 0;

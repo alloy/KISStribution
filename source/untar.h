@@ -1,1 +1,2 @@
-void untar(const char *input);
+void
+untar(const char *input);

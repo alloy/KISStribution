@@ -50,6 +50,8 @@ static char nulmark[] = "/dev/null";
 int LZ4IO_compressFilename  (char* input_filename, char* output_filename, int compressionlevel);
 int LZ4IO_decompressFilename(char* input_filename, char* output_filename);
 
+// KISStribution change
+int LZ4IO_decompress(const char *input, char **foutput);
 
 /* ************************************************** */
 /* ****************** Parameters ******************** */

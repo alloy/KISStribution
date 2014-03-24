@@ -50,9 +50,9 @@ task :run => :link do
 end
 
 ENV['BINNAME'] ||= 'test'
-ENV['DATAFILE'] ||= 'fixtures/test.tar'
-#ENV['DATAFILE'] ||= 'fixtures/test.tar.lz4'
-#ENV['ORIGINALFILE'] ||= 'fixtures/test.tar'
+#ENV['DATAFILE'] ||= 'fixtures/test.tar'
+ENV['DATAFILE'] ||= 'fixtures/test.tar.lz4'
+ENV['ORIGINALFILE'] ||= 'fixtures/test.tar'
 ENV['EXECCMD'] ||= '/bin/ls -l /tmp/KISStribution.XXXXX'
 
 task :default => :run

@@ -8,7 +8,7 @@
 #include <mach-o/getsect.h>
 
 #include "untar.h"
-#include "lz4/lz4.h"
+#include "lz4/lz4io.h"
 
 static const uint8_t *
 archive_data(const char *segname, unsigned long *size)
@@ -68,10 +68,13 @@ main() {
     printf("ARCHIVE UNPACKED SIZE: %d\n", unpacked_size);
 
     // TODO
-    /*char unpacked_data[unpacked_size];*/
-    /*[>int res = LZ4_decompress_fast((const char *)lz4_data, unpacked_data, unpacked_size);<]*/
-    /*int res = LZ4_decompress_safe((const char *)lz4_data, unpacked_data, input_size, unpacked_size);*/
-    /*printf("RESULT: %d\n", res);*/
+    char unpacked_data[unpacked_size];
+    int res = LZ4IO_decompress((const char *)lz4_data, (char **)&unpacked_data);
+    if (res != 0) {
+      fprintf(stderr, "[!] Unable to extract compressed lz4 data.\n");
+      return 1;
+    }
+    tar_data = (const uint8_t *)unpacked_data;
   }
 
   if (untar_data((const char *)tar_data) != 0) {
