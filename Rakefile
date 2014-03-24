@@ -6,7 +6,7 @@ PRODUCTS_DIR = File.join(BUILD_DIR, 'products')
 desc 'Create stub'
 task :stub do
   mkdir_p OBJECTS_BUILD_DIR
-  sources = %w{ stub.c untar.c lz4/lz4.c }
+  sources = %w{ source/stub.c source/untar.c source/lz4/lz4.c source/lz4/lz4hc.c source/lz4/lz4io.c source/lz4/xxhash.c }
   objects = sources.map do |source|
     File.join(OBJECTS_BUILD_DIR, "#{File.basename(source, '.c')}.o")
   end
