@@ -11,11 +11,16 @@
 #include "lz4/lz4io.h"
 
 static const uint8_t *
-archive_data(const char *segname, unsigned long *size)
+archive_data(const char *segname, int validate)
 {
   printf("Looking for `__DATA,%s' section.\n", segname);
-  const uint8_t *data = getsectiondata(&_mh_execute_header, "__DATA", segname, size);
-  printf("Found `%lu' bytes of `__DATA,%s' data.\n", *size, segname);
+  unsigned long size = 0;
+  const uint8_t *data = getsectiondata(&_mh_execute_header, "__DATA", segname, &size);
+  printf("Found `%lu' bytes of `__DATA,%s' data.\n", size, segname);
+  if (validate && size == 0) {
+    fprintf(stderr, "[!] No `__DATA,%s' section found in executable.\n", segname);
+    exit(1);
+  }
   return data;
 }
 
@@ -49,25 +54,12 @@ untar_data(const char *data)
 int
 main() {
   unsigned long size = 0;
-  const uint8_t *tar_data = archive_data("__tar_data", &size);
-  if (size == 0) {
-    const uint8_t *lz4_data = archive_data("__lz4_data", &size);
-    if (size == 0) {
-      fprintf(stderr, "[!] No data found in executable __DATA segment. Add " \
-                      "either a `__tar_data' or a `__lz4_data' section.\n");
-      return 1;
-    }
-    unsigned long input_size = size;
-    const uint8_t *lz4_data_size = archive_data("__lz4_size", &size);
-    if (size == 0) {
-      fprintf(stderr, "[!] No archive size data found in executable __DATA " \
-                      "segment. Add a `__lz4_size' section.\n");
-      return 1;
-    }
+  const uint8_t *tar_data = archive_data("__tar_data", 0);
+  if (tar_data == NULL) {
+    // Try to unpack LZ4 data.
+    const uint8_t *lz4_data = archive_data("__lz4_data", 1);
+    const uint8_t *lz4_data_size = archive_data("__lz4_size", 1);
     int unpacked_size = atoi((const char *)lz4_data_size);
-    printf("ARCHIVE UNPACKED SIZE: %d\n", unpacked_size);
-
-    // TODO
     char unpacked_data[unpacked_size];
     int res = LZ4IO_decompress((const char *)lz4_data, (char **)&unpacked_data);
     if (res != 0) {
@@ -82,13 +74,7 @@ main() {
     return 1;
   }
 
-  const uint8_t *exec_cmd = archive_data("__exec_cmd", &size);
-  if (size == 0) {
-    fprintf(stderr, "[!] No command to execute found in executable __DATA " \
-                    "segment. Add a `__exec_cmd' section.\n");
-    return 1;
-  }
-
+  const uint8_t *exec_cmd = archive_data("__exec_cmd", 1);
   // TODO actually use exec_cmd
   printf("Exec: %s\n", exec_cmd);
 
