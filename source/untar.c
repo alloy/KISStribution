@@ -127,28 +127,33 @@ verify_checksum(const char *p)
 	return (u == parseoct(p + 148, 8));
 }
 
+// KISStribution change.
+#include "string_io.h"
+#include "untar.h"
+
 /* Extract a tar archive. */
 void
 untar(const char *input)
 {
-	/*char buff[512];*/
-  char *buff = (char *)input;
+  char buff[512];
+  char **a = (char **)&input;
 	FILE *f = NULL;
 	size_t bytes_read;
 	int filesize;
 
+  // KISStribution change.
   const char *path = "/foo/bar";
 
 	printf("Extracting\n");
 	for (;;) {
-    bytes_read = 512;
-		/*bytes_read = fread(buff, 1, 512, a);*/
-		/*if (bytes_read < 512) {*/
-			/*fprintf(stderr,*/
-					/*"Short read on %s: expected 512, got %d\n",*/
-					/*path, (int)bytes_read);*/
-			/*return;*/
-		/*}*/
+    // KISStribution change.
+    bytes_read = sread(buff, 1, 512, a);
+    if (bytes_read < 512) {
+      fprintf(stderr,
+          "Short read on %s: expected 512, got %d\n",
+          path, (int)bytes_read);
+      return;
+    }
 		if (is_end_of_archive(buff)) {
 			printf("End of %s\n", path);
 			return;
@@ -185,15 +190,14 @@ untar(const char *input)
 			break;
 		}
 		while (filesize > 0) {
-      buff = buff + 512;
-      bytes_read = 512;
-			/*bytes_read = fread(buff, 1, 512, a);*/
-			/*if (bytes_read < 512) {*/
-				/*fprintf(stderr,*/
-						/*"Short read on %s: Expected 512, got %d\n",*/
-						/*path, (int)bytes_read);*/
-				/*return;*/
-			/*}*/
+      // KISStribution change.
+      bytes_read = sread(buff, 1, 512, a);
+      if (bytes_read < 512) {
+        fprintf(stderr,
+            "Short read on %s: Expected 512, got %d\n",
+            path, (int)bytes_read);
+        return;
+      }
 			if (filesize < 512)
 				bytes_read = filesize;
 			if (f != NULL) {
@@ -211,10 +215,10 @@ untar(const char *input)
 			fclose(f);
 			f = NULL;
 		}
-    buff = buff + 512;
 	}
 }
 
+// KISStribution change.
 /*int*/
 /*main(int argc, char **argv)*/
 /*{*/

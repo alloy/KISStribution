@@ -7,6 +7,7 @@
 #include <mach-o/ldsyms.h>
 #include <mach-o/getsect.h>
 
+#include "untar.h"
 #include "lz4/lz4.h"
 
 static const uint8_t *

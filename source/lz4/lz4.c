@@ -707,6 +707,8 @@ int LZ4_compress_limitedOutput_continue (void* LZ4_Data, const char* source, cha
     return LZ4_compress_generic(LZ4_Data, source, dest, inputSize, maxOutputSize, limited, byU32, withPrefix);
 }
 
+// KISStribution change
+#include <stdio.h>
 
 /****************************
    Decompression functions
