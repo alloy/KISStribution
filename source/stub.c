@@ -112,15 +112,15 @@ main() {
   printf("Exec: %s\n", exec_cmd);
   char **components = shellsplit((const char *)exec_cmd);
   free(exec_cmd);
-  for (int i = 0; i < 99; ++i) {
+  for (int i = 0; 1; ++i) {
     printf("components[%d] = %s\n", i, components[i]);
-    if (components[i] == NULL) {
+    if (components[i] == '\0') {
       break;
     }
   }
   // TODO fork
-  execv(components[0], &components[0]);
+  int status = execv(components[0], &components[0]);
   free(components);
 
-  return 0;
+  return status;
 }
