@@ -20,6 +20,8 @@ desc 'Link data file into final binary'
 task :link => :stub do
   product = ENV['BINNAME'] || raise('[!] Specify BINNAME env var.')
   data_file = ENV['DATAFILE'] || raise('[!] Specify DATAFILE env var.')
+  exec_cmd = ENV['EXECCMD'] || raise('[!] Specify EXECCMD env var.')
+
   product_object = File.join(PRODUCTS_DIR, "#{product}.o")
   ext = File.extname(data_file)[1..-1]
   mkdir_p PRODUCTS_DIR
@@ -30,7 +32,10 @@ task :link => :stub do
     File.open(lz4_size_file, 'w') { |f| f.write(File.size?(original_file)) }
     lz4_size_command = "-sectcreate __DATA __lz4_size #{lz4_size_file}"
   end
-  sh "ld -r #{EXECUTABLE_OBJECT} -sectcreate __DATA __#{ext}_data '#{data_file}' #{lz4_size_command} -o '#{product_object}'"
+  cmd_file = '/tmp/exec_cmd'
+  File.open(cmd_file, 'w') { |f| f.write(exec_cmd) }
+
+  sh "ld -r #{EXECUTABLE_OBJECT} -sectcreate __DATA __#{ext}_data '#{data_file}' -sectcreate __DATA __exec_cmd '#{cmd_file}' #{lz4_size_command} -o '#{product_object}'"
   sh "clang #{product_object} -o #{File.join(PRODUCTS_DIR, product)}"
 end
 
@@ -45,8 +50,9 @@ task :run => :link do
 end
 
 ENV['BINNAME'] ||= 'test'
-#ENV['DATAFILE'] ||= 'fixtures/test.tar'
-ENV['DATAFILE'] ||= 'fixtures/test.tar.lz4'
-ENV['ORIGINALFILE'] ||= 'fixtures/test.tar'
+ENV['DATAFILE'] ||= 'fixtures/test.tar'
+#ENV['DATAFILE'] ||= 'fixtures/test.tar.lz4'
+#ENV['ORIGINALFILE'] ||= 'fixtures/test.tar'
+ENV['EXECCMD'] ||= '/bin/ls -l /tmp/KISStribution.XXXXX'
 
 task :default => :run

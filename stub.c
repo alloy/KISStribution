@@ -73,5 +73,23 @@ main() {
     /*printf("RESULT: %d\n", res);*/
   }
 
-  return untar_data((const char *)tar_data);
+  if (untar_data((const char *)tar_data) != 0) {
+    fprintf(stderr, "[!] Failed to unpack data.\n");
+    return 1;
+  }
+
+  const uint8_t *exec_cmd = archive_data("__exec_cmd", &size);
+  if (size == 0) {
+    fprintf(stderr, "[!] No command to execute found in executable __DATA " \
+                    "segment. Add a `__exec_cmd' section.\n");
+    return 1;
+  }
+
+  // TODO actually use exec_cmd
+  printf("Exec: %s\n", exec_cmd);
+
+  // TODO fork
+  execl("/bin/ls", "ls", "-l", "/tmp/KISStribution.XXXXX", (char *)0);
+
+  return 0;
 }
