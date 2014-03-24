@@ -33,9 +33,6 @@ archive_data(const char *segname, int validate)
   return result;
 }
 
-void
-untar(const char *);
-
 static int
 untar_data(const char *data)
 {
@@ -58,6 +55,35 @@ untar_data(const char *data)
   untar(data);
 
   return 0;
+}
+
+static void
+unpack_data(void)
+{
+  uint8_t *tar_data = archive_data("__tar_data", 0);
+  if (tar_data == NULL) {
+    // Try to unpack LZ4 data.
+    uint8_t *lz4_data = archive_data("__lz4_data", 1);
+    uint8_t *lz4_data_size = archive_data("__lz4_size", 1);
+    int unpacked_size = atoi((const char *)lz4_data_size);
+    free(lz4_data_size);
+    char unpacked_data[unpacked_size];
+    int res = LZ4IO_decompress((const char *)lz4_data, (char **)&unpacked_data);
+    free(lz4_data);
+    if (res != 0) {
+      fprintf(stderr, "[!] Unable to extract compressed lz4 data.\n");
+      exit(1);
+    }
+    tar_data = malloc(sizeof(uint8_t) * unpacked_size);
+    memcpy(tar_data, unpacked_data, unpacked_size);
+  }
+
+  int res = untar_data((const char *)tar_data);
+  free(tar_data);
+  if (res != 0) {
+    fprintf(stderr, "[!] Failed to unpack data.\n");
+    exit(1);
+  }
 }
 
 // Needs to be freed.
@@ -83,41 +109,13 @@ shellsplit(const char *input)
 
 int
 main() {
-  unsigned long size = 0;
-  uint8_t *tar_data = archive_data("__tar_data", 0);
-  if (tar_data == NULL) {
-    // Try to unpack LZ4 data.
-    uint8_t *lz4_data = archive_data("__lz4_data", 1);
-    uint8_t *lz4_data_size = archive_data("__lz4_size", 1);
-    int unpacked_size = atoi((const char *)lz4_data_size);
-    free(lz4_data_size);
-    char unpacked_data[unpacked_size];
-    int res = LZ4IO_decompress((const char *)lz4_data, (char **)&unpacked_data);
-    free(lz4_data);
-    if (res != 0) {
-      fprintf(stderr, "[!] Unable to extract compressed lz4 data.\n");
-      return 1;
-    }
-    tar_data = malloc(sizeof(char) * unpacked_size);
-    memcpy(tar_data, unpacked_data, unpacked_size);
-  }
-
-  if (untar_data((const char *)tar_data) != 0) {
-    fprintf(stderr, "[!] Failed to unpack data.\n");
-    return 1;
-  }
-  free(tar_data);
+  unpack_data();
 
   uint8_t *exec_cmd = archive_data("__exec_cmd", 1);
   printf("Exec: %s\n", exec_cmd);
   char **components = shellsplit((const char *)exec_cmd);
   free(exec_cmd);
-  for (int i = 0; 1; ++i) {
-    printf("components[%d] = %s\n", i, components[i]);
-    if (components[i] == '\0') {
-      break;
-    }
-  }
+
   // TODO fork
   int status = execv(components[0], &components[0]);
   free(components);
