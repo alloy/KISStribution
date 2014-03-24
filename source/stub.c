@@ -12,7 +12,8 @@
 #include "untar.h"
 #include "lz4/lz4io.h"
 
-static const uint8_t *
+// Needs to be freed.
+static uint8_t *
 archive_data(const char *segname, int validate)
 {
   printf("Looking for `__DATA,%s' section.\n", segname);
@@ -23,7 +24,13 @@ archive_data(const char *segname, int validate)
     fprintf(stderr, "[!] No `__DATA,%s' section found in executable.\n", segname);
     exit(1);
   }
-  return data;
+  if (size == 0) {
+    return NULL;
+  }
+  uint8_t *result = malloc(sizeof(uint8_t) * (size + 1));
+  memcpy(result, data, size);
+  result[size] = '\0';
+  return result;
 }
 
 void
@@ -64,12 +71,12 @@ shellsplit(const char *input)
   char *p = strtok((char *)input, " ");
   int components_count = 0;
   while (p) {
-    components = realloc(components, sizeof(char *) * (++components_count));
+    components = realloc(components, sizeof(char) * (++components_count));
     assert(components != NULL && "Unable to allocate memory.");
     components[components_count-1] = p;
     p = strtok(NULL, " ");
   }
-  components = realloc(components, sizeof(char *) * (++components_count));
+  components = realloc(components, sizeof(char) * (++components_count));
   components[components_count-1] = NULL;
   return components;
 }
@@ -77,32 +84,34 @@ shellsplit(const char *input)
 int
 main() {
   unsigned long size = 0;
-  const uint8_t *tar_data = archive_data("__tar_data", 0);
+  uint8_t *tar_data = archive_data("__tar_data", 0);
   if (tar_data == NULL) {
     // Try to unpack LZ4 data.
-    const uint8_t *lz4_data = archive_data("__lz4_data", 1);
-    const uint8_t *lz4_data_size = archive_data("__lz4_size", 1);
+    uint8_t *lz4_data = archive_data("__lz4_data", 1);
+    uint8_t *lz4_data_size = archive_data("__lz4_size", 1);
     int unpacked_size = atoi((const char *)lz4_data_size);
+    free(lz4_data_size);
     char unpacked_data[unpacked_size];
     int res = LZ4IO_decompress((const char *)lz4_data, (char **)&unpacked_data);
+    free(lz4_data);
     if (res != 0) {
       fprintf(stderr, "[!] Unable to extract compressed lz4 data.\n");
       return 1;
     }
-    tar_data = (const uint8_t *)unpacked_data;
+    tar_data = malloc(sizeof(char) * unpacked_size);
+    memcpy(tar_data, unpacked_data, unpacked_size);
   }
 
   if (untar_data((const char *)tar_data) != 0) {
     fprintf(stderr, "[!] Failed to unpack data.\n");
     return 1;
   }
+  free(tar_data);
 
-  const uint8_t *exec_cmd = archive_data("__exec_cmd", 1);
-  // TODO actually use exec_cmd
+  uint8_t *exec_cmd = archive_data("__exec_cmd", 1);
   printf("Exec: %s\n", exec_cmd);
-
   char **components = shellsplit((const char *)exec_cmd);
-  /*free(exec_cmd);*/
+  free(exec_cmd);
   for (int i = 0; i < 99; ++i) {
     printf("components[%d] = %s\n", i, components[i]);
     if (components[i] == NULL) {
@@ -110,7 +119,6 @@ main() {
     }
   }
   // TODO fork
-  /*execl("/bin/ls", "ls", "-l", "/tmp/KISStribution.XXXXX", (char *)0);*/
   execv(components[0], &components[0]);
   free(components);
 

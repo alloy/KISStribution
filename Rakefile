@@ -30,7 +30,7 @@ task :link => :stub do
     original_file = ENV['ORIGINALFILE'] || raise('[!] Specify ORIGINALFILE env var.')
     lz4_size_file = '/tmp/lz4-size'
     File.open(lz4_size_file, 'w') { |f| f.write(File.size?(original_file)) }
-    lz4_size_command = "-sectcreate __DATA __lz4_size #{lz4_size_file}"
+    lz4_size_command = "-sectcreate __DATA __lz4_size '#{lz4_size_file}'"
   end
   cmd_file = '/tmp/exec_cmd'
   File.open(cmd_file, 'w') { |f| f.write(exec_cmd) }
