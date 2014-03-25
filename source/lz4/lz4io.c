@@ -663,54 +663,54 @@ int LZ4IO_compressFilename(char* input_filename, char* output_filename, int comp
 /* ********************** LZ4 File / Stream decoding ******************* */
 /* ********************************************************************* */
 
-static unsigned long long decodeLegacyStream(FILE* finput, FILE* foutput)
-{
-    unsigned long long filesize = 0;
-    char* in_buff;
-    char* out_buff;
-    unsigned int blockSize;
+/*static unsigned long long decodeLegacyStream(FILE* finput, FILE* foutput)*/
+/*{*/
+    /*unsigned long long filesize = 0;*/
+    /*char* in_buff;*/
+    /*char* out_buff;*/
+    /*unsigned int blockSize;*/
 
 
-    // Allocate Memory
-    in_buff = (char*)malloc(LZ4_compressBound(LEGACY_BLOCKSIZE));
-    out_buff = (char*)malloc(LEGACY_BLOCKSIZE);
-    if (!in_buff || !out_buff) EXM_THROW(51, "Allocation error : not enough memory");
+    /*// Allocate Memory*/
+    /*in_buff = (char*)malloc(LZ4_compressBound(LEGACY_BLOCKSIZE));*/
+    /*out_buff = (char*)malloc(LEGACY_BLOCKSIZE);*/
+    /*if (!in_buff || !out_buff) EXM_THROW(51, "Allocation error : not enough memory");*/
 
-    // Main Loop
-    while (1)
-    {
-        int decodeSize;
-        size_t sizeCheck;
+    /*// Main Loop*/
+    /*while (1)*/
+    /*{*/
+        /*int decodeSize;*/
+        /*size_t sizeCheck;*/
 
-        // Block Size
-        sizeCheck = fread(&blockSize, 1, 4, finput);
-        if (sizeCheck==0) break;                   // Nothing to read : file read is completed
-        blockSize = LITTLE_ENDIAN_32(blockSize);   // Convert to Little Endian
-        if (blockSize > LZ4_COMPRESSBOUND(LEGACY_BLOCKSIZE))
-        {   // Cannot read next block : maybe new stream ?
-            fseek(finput, -4, SEEK_CUR);
-            break;
-        }
+        /*// Block Size*/
+        /*sizeCheck = fread(&blockSize, 1, 4, finput);*/
+        /*if (sizeCheck==0) break;                   // Nothing to read : file read is completed*/
+        /*blockSize = LITTLE_ENDIAN_32(blockSize);   // Convert to Little Endian*/
+        /*if (blockSize > LZ4_COMPRESSBOUND(LEGACY_BLOCKSIZE))*/
+        /*{   // Cannot read next block : maybe new stream ?*/
+            /*fseek(finput, -4, SEEK_CUR);*/
+            /*break;*/
+        /*}*/
 
-        // Read Block
-        sizeCheck = fread(in_buff, 1, blockSize, finput);
+        /*// Read Block*/
+        /*sizeCheck = fread(in_buff, 1, blockSize, finput);*/
 
-        // Decode Block
-        decodeSize = LZ4_decompress_safe(in_buff, out_buff, blockSize, LEGACY_BLOCKSIZE);
-        if (decodeSize < 0) EXM_THROW(52, "Decoding Failed ! Corrupted input detected !");
-        filesize += decodeSize;
+        /*// Decode Block*/
+        /*decodeSize = LZ4_decompress_safe(in_buff, out_buff, blockSize, LEGACY_BLOCKSIZE);*/
+        /*if (decodeSize < 0) EXM_THROW(52, "Decoding Failed ! Corrupted input detected !");*/
+        /*filesize += decodeSize;*/
 
-        // Write Block
-        sizeCheck = fwrite(out_buff, 1, decodeSize, foutput);
-        if (sizeCheck != (size_t)decodeSize) EXM_THROW(53, "Write error : cannot write decoded block into output\n");
-    }
+        /*// Write Block*/
+        /*sizeCheck = fwrite(out_buff, 1, decodeSize, foutput);*/
+        /*if (sizeCheck != (size_t)decodeSize) EXM_THROW(53, "Write error : cannot write decoded block into output\n");*/
+    /*}*/
 
-    // Free
-    free(in_buff);
-    free(out_buff);
+    /*// Free*/
+    /*free(in_buff);*/
+    /*free(out_buff);*/
 
-    return filesize;
-}
+    /*return filesize;*/
+/*}*/
 
 // KISStribution change
 #include "../string_io.h"

@@ -97,12 +97,12 @@ shellsplit(const char *input)
   char *p = strtok((char *)input, " ");
   int components_count = 0;
   while (p) {
-    components = realloc(components, sizeof(char) * (++components_count));
+    components = realloc(components, sizeof(char *) * (++components_count));
     assert(components != NULL && "Unable to allocate memory.");
     components[components_count-1] = p;
     p = strtok(NULL, " ");
   }
-  components = realloc(components, sizeof(char) * (++components_count));
+  components = realloc(components, sizeof(char *) * (++components_count));
   components[components_count-1] = NULL;
   return components;
 }

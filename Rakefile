@@ -3,18 +3,30 @@ OBJECTS_BUILD_DIR = File.join(BUILD_DIR, 'base-objects')
 EXECUTABLE_OBJECT = File.join(OBJECTS_BUILD_DIR, 'product-template.o')
 PRODUCTS_DIR = File.join(BUILD_DIR, 'products')
 
-desc 'Create stub'
-task :stub do
+SOURCES = %w{ source/stub.c source/string_io.c source/untar.c source/lz4/lz4.c source/lz4/lz4hc.c source/lz4/lz4io.c source/lz4/xxhash.c }
+OBJECTS = SOURCES.map do |source|
+  File.join(OBJECTS_BUILD_DIR, "#{File.basename(source, '.c')}.o")
+end
+
+task :objects do
   mkdir_p OBJECTS_BUILD_DIR
-  sources = %w{ source/stub.c source/string_io.c source/untar.c source/lz4/lz4.c source/lz4/lz4hc.c source/lz4/lz4io.c source/lz4/xxhash.c }
-  objects = sources.map do |source|
-    File.join(OBJECTS_BUILD_DIR, "#{File.basename(source, '.c')}.o")
-  end
-  sources.zip(objects).each do |source, object|
+  SOURCES.zip(OBJECTS).each do |source, object|
     # TODO -Weverything
-    sh "clang -g -O0 -Wall -c #{source} -o #{object}"
+    command = "clang -g -O0 -Wall -c #{source} "
+    command << (ENV['ANALYZE'] ? '--analyze -o /dev/null' : "-o #{object}")
+    sh command
   end
-  sh "ld -r #{objects.join(' ')} -o #{EXECUTABLE_OBJECT}"
+end
+
+desc 'Create stub'
+task :stub => :objects do
+  sh "ld -r #{OBJECTS.join(' ')} -o #{EXECUTABLE_OBJECT}"
+end
+
+desc 'Run clang analyzer'
+task :analyze do
+  ENV['ANALYZE'] = '1'
+  Rake::Task[:objects].invoke
 end
 
 desc 'Link data file into final binary'
