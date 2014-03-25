@@ -1,4 +1,5 @@
 #include "archive_data.h"
+#include "lz4/lz4io.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,4 +26,18 @@ archive_data(const char *segname, int validate)
   memcpy(result, data, size);
   result[size] = '\0';
   return result;
+}
+
+void
+decompress_lz4_data(uint8_t *lz4_data, uint8_t **out, int unpacked_size)
+{
+  char unpacked_data[unpacked_size];
+  int res = LZ4IO_decompress((const char *)lz4_data, (char **)&unpacked_data);
+  free(lz4_data);
+  if (res != 0) {
+    fprintf(stderr, "[!] Unable to extract compressed lz4 data.\n");
+    exit(1);
+  }
+  *out = malloc(sizeof(uint8_t) * unpacked_size);
+  memcpy(*out, unpacked_data, unpacked_size);
 }

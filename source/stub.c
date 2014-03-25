@@ -8,7 +8,6 @@
 
 #include "archive_data.h"
 #include "untar.h"
-#include "lz4/lz4io.h"
 
 static int
 untar_data(const char *data)
@@ -39,20 +38,11 @@ unpack_data(void)
 {
   uint8_t *tar_data = archive_data("__tar_data", 0);
   if (tar_data == NULL) {
-    // Try to unpack LZ4 data.
     uint8_t *lz4_data = archive_data("__lz4_data", 1);
     uint8_t *lz4_data_size = archive_data("__lz4_size", 1);
     int unpacked_size = atoi((const char *)lz4_data_size);
+    decompress_lz4_data(lz4_data, &tar_data, unpacked_size);
     free(lz4_data_size);
-    char unpacked_data[unpacked_size];
-    int res = LZ4IO_decompress((const char *)lz4_data, (char **)&unpacked_data);
-    free(lz4_data);
-    if (res != 0) {
-      fprintf(stderr, "[!] Unable to extract compressed lz4 data.\n");
-      exit(1);
-    }
-    tar_data = malloc(sizeof(uint8_t) * unpacked_size);
-    memcpy(tar_data, unpacked_data, unpacked_size);
   }
 
   int res = untar_data((const char *)tar_data);
