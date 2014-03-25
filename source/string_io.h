@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <stddef.h>
 
 int
 sseek(char **source, size_t offset, int whence);

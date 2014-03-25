@@ -3,7 +3,7 @@ OBJECTS_BUILD_DIR = File.join(BUILD_DIR, 'base-objects')
 EXECUTABLE_OBJECT = File.join(OBJECTS_BUILD_DIR, 'product-template.o')
 PRODUCTS_DIR = File.join(BUILD_DIR, 'products')
 
-SOURCES = %w{ source/stub.c source/string_io.c source/untar.c source/lz4/lz4.c source/lz4/lz4hc.c source/lz4/lz4io.c source/lz4/xxhash.c }
+SOURCES = %w{ source/kisstribute.c source/archive_data.c source/stub.c source/string_io.c source/untar.c source/lz4/lz4.c source/lz4/lz4hc.c source/lz4/lz4io.c source/lz4/xxhash.c }
 OBJECTS = SOURCES.map do |source|
   File.join(OBJECTS_BUILD_DIR, "#{File.basename(source, '.c')}.o")
 end
@@ -20,7 +20,23 @@ end
 
 desc 'Create stub'
 task :stub => :objects do
-  sh "ld -r #{OBJECTS.join(' ')} -o #{EXECUTABLE_OBJECT}"
+  objects = OBJECTS.reject { |f| File.basename(f) == 'kisstribute.o' }
+  sh "ld -r #{objects.join(' ')} -o #{EXECUTABLE_OBJECT}"
+end
+
+desc 'Create kisstribute'
+task :kisstribute => :stub do
+  product_template = "#{EXECUTABLE_OBJECT}.lz4"
+  sh "lz4 -z9 #{EXECUTABLE_OBJECT} #{product_template}"
+
+  object = File.join(OBJECTS_BUILD_DIR, 'kisstribute.o')
+  product_object = File.join(OBJECTS_BUILD_DIR, 'kisstribute+product-template.o')
+  product = File.join(PRODUCTS_DIR, 'kisstribute')
+
+  # TODO use -Xlinker arg to clang?
+  sh "ld -r #{object} -sectcreate __DATA __kiss_data #{product_template} -o #{product_object}"
+  mkdir_p PRODUCTS_DIR
+  sh "clang #{product_object} -o #{product}"
 end
 
 desc 'Run clang analyzer'
