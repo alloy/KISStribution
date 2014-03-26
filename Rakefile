@@ -2,6 +2,7 @@ BUILD_DIR = 'build'
 OBJECTS_BUILD_DIR = File.join(BUILD_DIR, 'base-objects')
 EXECUTABLE_OBJECT = File.join(OBJECTS_BUILD_DIR, 'product-template.o')
 PRODUCTS_DIR = File.join(BUILD_DIR, 'products')
+FINAL_PRODUCT = File.join(PRODUCTS_DIR, 'kisstribute')
 
 SOURCES = %w{ source/kisstribute.c source/archive_data.c source/stub.c source/string_io.c source/untar.c source/lz4/lz4.c source/lz4/lz4hc.c source/lz4/lz4io.c source/lz4/xxhash.c }
 OBJECTS = SOURCES.map do |source|
@@ -26,24 +27,26 @@ end
 
 desc 'Create kisstribute'
 task :kisstribute => :stub do
-  product_template = "#{EXECUTABLE_OBJECT}.tar.lz4"
-  #sh "lz4 -zf9 #{EXECUTABLE_OBJECT} #{product_template}"
-  cmd = "tar -cf - #{EXECUTABLE_OBJECT} | lz4 -zf9 - #{product_template} 2>&1"
-  puts cmd
-  uncompressed_size = `#{cmd}`.split(/\r|\n/).last.match(/Compressed (\d+) bytes/)[1]
+  # TODO compressed data doesn't actually work atm
+  product_template = "#{EXECUTABLE_OBJECT}.tar"
+  sh "cd #{OBJECTS_BUILD_DIR} && tar -cf #{File.basename(product_template)} #{File.basename(EXECUTABLE_OBJECT)}"
+  #product_template = "#{EXECUTABLE_OBJECT}.tar.lz4"
+  #cmd = "tar -cf - #{EXECUTABLE_OBJECT} | lz4 -zf9 - #{product_template} 2>&1"
+  #puts cmd
+  #uncompressed_size = `#{cmd}`.split(/\r|\n/).last.match(/Compressed (\d+) bytes/)[1]
 
   object = File.join(OBJECTS_BUILD_DIR, 'kisstribute.o')
   product_object = File.join(OBJECTS_BUILD_DIR, 'kisstribute+product-template.o')
-  product = File.join(PRODUCTS_DIR, 'kisstribute')
 
   # TODO use -Xlinker arg to clang?
-  size_file = '/tmp/lz4-size'
-  File.open(size_file, 'w') { |f| f.write(uncompressed_size) }
-  sh "ld -r #{object} -sectcreate __DATA __kiss_data #{product_template} -sectcreate __DATA __kiss_size #{size_file} -o #{product_object}"
+  #size_file = '/tmp/lz4-size'
+  #File.open(size_file, 'w') { |f| f.write(uncompressed_size) }
+  #sh "ld -r #{object} -sectcreate __DATA __kiss_data #{product_template} -sectcreate __DATA __kiss_size #{size_file} -o #{product_object}"
+  sh "ld -r #{object} -sectcreate __DATA __kiss_data #{product_template} -o #{product_object}"
   mkdir_p PRODUCTS_DIR
   objects = [product_object]
   objects.concat(OBJECTS.reject { |o| %w{ kisstribute.o stub.o }.include?(File.basename(o)) })
-  sh "clang #{objects.join(' ')} -o #{product}"
+  sh "clang #{objects.join(' ')} -o #{FINAL_PRODUCT}"
 end
 
 desc 'Run clang analyzer'
@@ -80,15 +83,24 @@ task :clean do
   rm_rf 'build'
 end
 
+#desc 'Build and run'
+#task :run => :link do
+  #sh File.join(PRODUCTS_DIR, ENV['BINNAME'])
+#end
+
 desc 'Build and run'
-task :run => :link do
-  sh File.join(PRODUCTS_DIR, ENV['BINNAME'])
+task :run => :kisstribute do
+  product = ENV['BINNAME'] || raise('[!] Specify BINNAME env var.')
+  data_file = ENV['DATAFILE'] || raise('[!] Specify DATAFILE env var.')
+  exec_cmd = ENV['EXECCMD'] || raise('[!] Specify EXECCMD env var.')
+  sh "./#{FINAL_PRODUCT} #{data_file} #{product} '#{exec_cmd}'"
+  sh "./#{product}"
 end
 
-ENV['BINNAME'] ||= 'test'
-#ENV['DATAFILE'] ||= 'fixtures/test.tar'
-ENV['DATAFILE'] ||= 'fixtures/test.tar.lz4'
-ENV['ORIGINALFILE'] ||= 'fixtures/test.tar'
+ENV['BINNAME'] ||= File.join(PRODUCTS_DIR, 'test')
+ENV['DATAFILE'] ||= 'fixtures/test.tar'
+#ENV['DATAFILE'] ||= 'fixtures/test.tar.lz4'
+#ENV['ORIGINALFILE'] ||= 'fixtures/test.tar'
 ENV['EXECCMD'] ||= '/bin/ls -l /tmp/KISStribution.XXXXX'
 
 task :default => :run

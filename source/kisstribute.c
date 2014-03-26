@@ -4,7 +4,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "lz4/lz4io.h"
 #include "archive_data.h"
 #include "untar.h"
 
@@ -19,59 +18,30 @@ create_file(char *path, uint8_t *data, size_t size, const char *mode)
 int
 main(int argc, char **argv)
 {
-    union {
-        short sval;
-        unsigned char bval[2];
-    } udata;
-    udata.sval = 1;
-    printf( "DEC[%5hu]  HEX[%04hx]  BYTES[%02hhx][%02hhx]\n"
-          , udata.sval, udata.sval, udata.bval[0], udata.bval[1] );
-    udata.sval = 0x424d;
-    printf( "DEC[%5hu]  HEX[%04hx]  BYTES[%02hhx][%02hhx]\n"
-          , udata.sval, udata.sval, udata.bval[0], udata.bval[1] );
-    udata.sval = 0x4d42;
-    printf( "DEC[%5hu]  HEX[%04hx]  BYTES[%02hhx][%02hhx]\n"
-          , udata.sval, udata.sval, udata.bval[0], udata.bval[1] );
-
   if (argc != 4) {
     fprintf(stderr, "USAGE: kisstribute ARCHIVE OUTPUT COMMAND\n");
     return 1;
   }
 
-  uint8_t *lz4_data = archive_data("__kiss_data", 1);
-  uint8_t *lz4_data_size = archive_data("__kiss_size", 1);
-  int unpacked_size = atoi((const char *)lz4_data_size);
-  printf("Unpacked product-template.o size `%d'\n", unpacked_size);
-  free(lz4_data_size);
-  uint8_t *product_template_tar_data = NULL;
-  decompress_lz4_data(lz4_data, &product_template_tar_data, unpacked_size);
+  uint8_t *product_template_data = archive_data("__kiss_data", 1);
 
-  char *path = "/tmp/kisstribute-product-template.o";
+  char *path = "/tmp/product-template.o";
   printf("Extract product template object file to `%s'.\n", path);
 
+  const char *wd = getwd(NULL);
   if (chdir("/tmp") != 0) {
     fprintf(stderr, "Unable to change working dir to `/tmp' " \
                     "(errno=%d)\n", errno);
     return 1;
   }
   printf("Unpack tar data to `/tmp'.\n");
-  untar((const char *)product_template_tar_data);
-
-  /*create_file(path, product_template_data, unpacked_size, "wb");*/
-  /*uint16_t converted[unpacked_size/2];*/
-  /*int s = 0;*/
-  /*for (int i = 0; i < unpacked_size; i+=2) {*/
-    /*uint16_t c = product_template_data[i];*/
-    /*c = c << 8;*/
-    /*c |= product_template_data[i+1];*/
-    /*converted[s] = ntohs(c);*/
-    /*s++;*/
-  /*}*/
-  /*FILE *fd = fopen(path, "wb");*/
-  /*fwrite(converted, 2, unpacked_size/2, fd);*/
-  /*fclose(fd);*/
-
-  free(product_template_tar_data);
+  untar((const char *)product_template_data);
+  free(product_template_data);
+  if (chdir(wd) != 0) {
+    fprintf(stderr, "Unable to change working dir to `%s' " \
+                    "(errno=%d)\n", wd, errno);
+    return 1;
+  }
 
   // TODO add compress with lz4 support
   char *cmd_file = "/tmp/kisstribute-cmd";
