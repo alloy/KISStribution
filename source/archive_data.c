@@ -41,3 +41,4 @@ decompress_lz4_data(uint8_t *lz4_data, uint8_t **out, int unpacked_size)
   *out = malloc(sizeof(uint8_t) * unpacked_size);
   memcpy(*out, unpacked_data, unpacked_size);
 }
+

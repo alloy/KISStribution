@@ -26,8 +26,11 @@ end
 
 desc 'Create kisstribute'
 task :kisstribute => :stub do
-  product_template = "#{EXECUTABLE_OBJECT}.lz4"
-  sh "lz4 -zf9 #{EXECUTABLE_OBJECT} #{product_template}"
+  product_template = "#{EXECUTABLE_OBJECT}.tar.lz4"
+  #sh "lz4 -zf9 #{EXECUTABLE_OBJECT} #{product_template}"
+  cmd = "tar -cf - #{EXECUTABLE_OBJECT} | lz4 -zf9 - #{product_template} 2>&1"
+  puts cmd
+  uncompressed_size = `#{cmd}`.split(/\r|\n/).last.match(/Compressed (\d+) bytes/)[1]
 
   object = File.join(OBJECTS_BUILD_DIR, 'kisstribute.o')
   product_object = File.join(OBJECTS_BUILD_DIR, 'kisstribute+product-template.o')
@@ -35,11 +38,11 @@ task :kisstribute => :stub do
 
   # TODO use -Xlinker arg to clang?
   size_file = '/tmp/lz4-size'
-  File.open(size_file, 'w') { |f| f.write(File.size?(EXECUTABLE_OBJECT)) }
+  File.open(size_file, 'w') { |f| f.write(uncompressed_size) }
   sh "ld -r #{object} -sectcreate __DATA __kiss_data #{product_template} -sectcreate __DATA __kiss_size #{size_file} -o #{product_object}"
   mkdir_p PRODUCTS_DIR
   objects = [product_object]
-  objects.concat(OBJECTS.reject { |o| %w{ kisstribute.o stub.o untar.o }.include?(File.basename(o)) })
+  objects.concat(OBJECTS.reject { |o| %w{ kisstribute.o stub.o }.include?(File.basename(o)) })
   sh "clang #{objects.join(' ')} -o #{product}"
 end
 
