@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <errno.h>
+#include <libgen.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,26 +10,32 @@
 #include "archive_data.h"
 #include "untar.h"
 
-static int
-untar_data(const char *data)
+static char *
+prefix_path(const char *program_path)
 {
-  /*char *root = mkdtemp("/tmp/KISStribution.XXXXX");*/
-  char *root = "/tmp/KISStribution.XXXXX";
-  printf("Create prefix root at `%s'.\n", root);
-  if (mkdir(root, 0755) != 0 && errno != EEXIST) {
-    fprintf(stderr, "Unable to create root at `%s' (errno=%d)\n", root, errno);
+  char *uid = (char *)archive_data("__uid", 1);
+  char *program_name = basename((char *)program_path);
+  int size = strlen(program_name) + strlen(uid) + 7;
+  char *path = malloc(sizeof(char) * size);
+  snprintf(path, size, "/tmp/%s-%s", program_name, uid);
+  return path;
+}
+
+static int
+cwd_to_prefix(char *prefix)
+{
+  printf("Create prefix root at `%s'.\n", prefix);
+  if (mkdir(prefix, 0755) != 0 && errno != EEXIST) {
+    fprintf(stderr, "Unable to create root at `%s' (errno=%d)\n", prefix, errno);
     return 1;
   }
 
-  printf("Change to prefix root at `%s'.\n", root);
-  if (chdir(root) != 0) {
+  printf("Change to prefix root at `%s'.\n", prefix);
+  if (chdir(prefix) != 0) {
     fprintf(stderr, "Unable to change working dir to root at `%s' " \
-                    "(errno=%d)\n", root, errno);
+                    "(errno=%d)\n", prefix, errno);
     return 1;
   }
-
-  printf("Unpack tar data to prefix root at `%s'.\n", root);
-  untar(data);
 
   return 0;
 }
@@ -45,12 +52,9 @@ unpack_data(void)
     free(lz4_data_size);
   }
 
-  int res = untar_data((const char *)tar_data);
+  printf("Unpack tar data.\n");
+  untar((const char *)tar_data);
   free(tar_data);
-  if (res != 0) {
-    fprintf(stderr, "[!] Failed to unpack data.\n");
-    exit(1);
-  }
 }
 
 // Needs to be freed.
@@ -75,17 +79,35 @@ shellsplit(const char *input)
 }
 
 int
-main() {
+main(int argc, const char **argv) {
+  char *root = prefix_path(argv[0]);
+
+  // TODO we should not change the wd as the actual command might need to perform work there.
+  cwd_to_prefix(root);
   unpack_data();
 
   uint8_t *exec_cmd = archive_data("__exec_cmd", 1);
   printf("Exec: %s\n", exec_cmd);
   char **components = shellsplit((const char *)exec_cmd);
   free(exec_cmd);
+  int i = 0;
+  while (1) {
+    if (components[i] == '\0') {
+      break;
+    }
+    printf("components[%d] = %s\n", i, components[i]);
+    i++;
+  }
+
+  printf("ENV: KISSTRIBUTE_PREFIX=%s\n", root);
+  setenv("KISSTRIBUTE_PREFIX", root, 0);
+
+  free(root);
 
   // TODO fork
   int status = execv(components[0], &components[0]);
-  free(components);
+  assert(0 && "Should not be reached");
 
+  free(components);
   return status;
 }

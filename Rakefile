@@ -9,6 +9,15 @@ OBJECTS = SOURCES.map do |source|
   File.join(OBJECTS_BUILD_DIR, "#{File.basename(source, '.c')}.o")
 end
 
+require 'tempfile'
+
+def tmp(content)
+  file = Tempfile.new('kisstribute-tempfile')
+  file.write(content)
+  file.close
+  file.path
+end
+
 task :objects do
   mkdir_p OBJECTS_BUILD_DIR
   SOURCES.zip(OBJECTS).each do |source, object|
@@ -60,22 +69,24 @@ task :link => :stub do
   product = ENV['BINNAME'] || raise('[!] Specify BINNAME env var.')
   data_file = ENV['DATAFILE'] || raise('[!] Specify DATAFILE env var.')
   exec_cmd = ENV['EXECCMD'] || raise('[!] Specify EXECCMD env var.')
+  uid = ENV['UID'] || raise('[!] Specify UID env var.')
 
-  product_object = File.join(PRODUCTS_DIR, "#{product}.o")
+  product_object = File.join(PRODUCTS_DIR, "#{File.basename(product)}.o")
   ext = File.extname(data_file)[1..-1]
   mkdir_p PRODUCTS_DIR
 
   if ext == 'lz4'
-    original_file = ENV['ORIGINALFILE'] || raise('[!] Specify ORIGINALFILE env var.')
-    lz4_size_file = '/tmp/lz4-size'
-    File.open(lz4_size_file, 'w') { |f| f.write(File.size?(original_file)) }
-    lz4_size_command = "-sectcreate __DATA __lz4_size '#{lz4_size_file}'"
+    puts "lz4 support not working yet"
+    exit 1
+    #original_file = ENV['ORIGINALFILE'] || raise('[!] Specify ORIGINALFILE env var.')
+    #lz4_size_file = '/tmp/lz4-size'
+    #File.open(lz4_size_file, 'w') { |f| f.write(File.size?(original_file)) }
+    #lz4_size_command = "-sectcreate __DATA __lz4_size '#{lz4_size_file}'"
   end
-  cmd_file = '/tmp/exec_cmd'
-  File.open(cmd_file, 'w') { |f| f.write(exec_cmd) }
+  #sh "ld -r #{EXECUTABLE_OBJECT} -sectcreate __DATA __#{ext}_data '#{data_file}' -sectcreate __DATA __exec_cmd '#{cmd_file}' #{lz4_size_command} -o '#{product_object}'"
 
-  sh "ld -r #{EXECUTABLE_OBJECT} -sectcreate __DATA __#{ext}_data '#{data_file}' -sectcreate __DATA __exec_cmd '#{cmd_file}' #{lz4_size_command} -o '#{product_object}'"
-  sh "clang #{product_object} -o #{File.join(PRODUCTS_DIR, product)}"
+  sh "ld -r #{EXECUTABLE_OBJECT} -sectcreate __DATA __#{ext}_data '#{data_file}' -sectcreate __DATA __exec_cmd '#{tmp(exec_cmd)}' -sectcreate __DATA __uid '#{tmp(uid)}' -o '#{product_object}'"
+  sh "clang #{product_object} -o #{product}"
 end
 
 desc 'Clean'
@@ -83,24 +94,25 @@ task :clean do
   rm_rf 'build'
 end
 
-#desc 'Build and run'
-#task :run => :link do
-  #sh File.join(PRODUCTS_DIR, ENV['BINNAME'])
-#end
-
 desc 'Build and run'
-task :run => :kisstribute do
-  product = ENV['BINNAME'] || raise('[!] Specify BINNAME env var.')
-  data_file = ENV['DATAFILE'] || raise('[!] Specify DATAFILE env var.')
-  exec_cmd = ENV['EXECCMD'] || raise('[!] Specify EXECCMD env var.')
-  sh "./#{FINAL_PRODUCT} #{data_file} #{product} '#{exec_cmd}'"
-  sh "./#{product}"
+task :run => :link do
+  sh ENV['BINNAME']
 end
+
+#desc 'Build and run'
+#task :run => :kisstribute do
+  #product = ENV['BINNAME'] || raise('[!] Specify BINNAME env var.')
+  #data_file = ENV['DATAFILE'] || raise('[!] Specify DATAFILE env var.')
+  #exec_cmd = ENV['EXECCMD'] || raise('[!] Specify EXECCMD env var.')
+  #sh "./#{FINAL_PRODUCT} #{data_file} #{product} '#{exec_cmd}'"
+  #sh "./#{product}"
+#end
 
 ENV['BINNAME'] ||= File.join(PRODUCTS_DIR, 'test')
 ENV['DATAFILE'] ||= 'fixtures/test.tar'
 #ENV['DATAFILE'] ||= 'fixtures/test.tar.lz4'
 #ENV['ORIGINALFILE'] ||= 'fixtures/test.tar'
-ENV['EXECCMD'] ||= '/bin/ls -l /tmp/KISStribution.XXXXX'
+ENV['EXECCMD'] ||= '/bin/ls -l'
+ENV['UID'] ||= 'v1.0.0'
 
 task :default => :run
